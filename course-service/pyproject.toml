@@ -21,6 +21,7 @@ lint = [
     "pylint==4.0.8",
     "radon==6.0.1",
     "ruff==0.16.8",
+    "types-pyyaml>=6.0.12.20260906",
 ]
 test = [
     "aiosqlite==0.22.1",
@@ -39,6 +40,7 @@ dev = [
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+pythonpath = ["."]
 
 [tool.isort]
 profile = "black"
