@@ -1,0 +1,1311 @@
+openapi: 3.0.3
+info:
+  title: Course Service API
+  version: 1.0.0
+  description: REST API for managing courses, assignments and submissions
+  contact:
+    name: Техническая поддержка
+    email: popkov.max05@yandex.ru
+servers:
+  - url: http://127.0.0.1:8888
+    description: Development server
+tags:
+  - name: Users
+    description: User management
+  - name: Courses
+    description: Course management
+  - name: Assignments
+    description: Assignment management
+  - name: Submissions
+    description: Submission management
+  - name: Reviews
+    description: Review management
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/courses:
+    get:
+      tags: [Courses]
+      summary: Get available courses
+      description: Returns courses accessible to the current user
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Sort'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/CourseStatus'
+        - name: professor_id
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: List of courses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Courses'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    post:
+      tags: [Courses]
+      summary: Create course
+      description: Available only to administrators
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseCreate'
+            example:
+              title: Backend-разработка на Python
+              description: Учебный курс по разработке серверных приложений на Python с использованием FastAPI.
+              professor_id: 1
+              status: DRAFT
+      responses:
+        '201':
+          description: Course created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+              example:
+                id: 550e8400-e29b-41d4-a716-446655440000
+                title: Backend-разработка на Python
+                description: Учебный курс по разработке серверных приложений на Python с использованием FastAPI.
+                professor_id: 1
+                status: DRAFT
+                created_at: '2026-10-24T09:00:00Z'
+                updated_at: '2026-10-24T09:00:00Z'
+        '401':
+          description: Authentication required or token invalid
+          headers:
+            WWW-Authenticate:
+              description: Authentication scheme
+              schema:
+                type: string
+                example: Bearer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: TOKEN_MISSING
+                  message: Токен отсутствует
+                  status: 401
+                  path: /api/v1/courses
+                  request_id: 11111111-1111-4111-8111-111111111111
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/courses/{id}:
+    parameters:
+      - $ref: '#/components/parameters/CourseId'
+
+    get:
+      tags: [Courses]
+      summary: Get course by ID
+      responses:
+        '200':
+          description: Course details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    patch:
+      tags: [Courses]
+      summary: Partially update course
+      description: Available to the assigned professor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CoursePatch'
+      responses:
+        '200':
+          description: Course updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    put:
+      tags: [Courses]
+      summary: Fully update course
+      description: Available only to administrators
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseUpdate'
+      responses:
+        '200':
+          description: Course updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      tags: [Courses]
+      summary: Delete course
+      description: Available only to administrators
+      responses:
+        '204':
+          description: Course deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/courses/{course_id}/students:
+    parameters:
+      - $ref: '#/components/parameters/CoursePathId'
+
+    get:
+      tags: [Courses]
+      summary: Get course students
+      description: Available to administrators and the assigned professor
+      responses:
+        '200':
+          description: Course students
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseStudents'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/courses/{course_id}/students/{student_id}:
+    parameters:
+      - $ref: '#/components/parameters/CoursePathId'
+      - $ref: '#/components/parameters/StudentId'
+
+    post:
+      tags: [Courses]
+      summary: Enroll student
+      description: Available only to administrators
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Student enrolled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CourseStudents'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      tags: [Courses]
+      summary: Remove student from course
+      description: Available only to administrators
+      responses:
+        '204':
+          description: Student removed from course
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/users:
+    get:
+      tags: [ Users ]
+      summary: Get users
+      description: Available only to administrators
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Sort'
+        - name: role
+          in: query
+          schema:
+            $ref: '#/components/schemas/UserRole'
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Users'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    post:
+      tags: [ Users ]
+      summary: Create user
+      description: Available only to administrators
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+
+    get:
+      tags: [ Users ]
+      summary: Get user by ID
+      description: Available to administrators and the user themselves
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    patch:
+      tags: [ Users ]
+      summary: Update user
+      description: Users can update their own profile; only administrators can change roles
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      tags: [ Users ]
+      summary: Delete user
+      description: Available only to administrators
+      responses:
+        '204':
+          description: User deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/courses/{course_id}/assignments:
+    parameters:
+      - $ref: '#/components/parameters/CoursePathId'
+
+    get:
+      tags: [ Assignments ]
+      summary: Get course assignments
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Sort'
+        - name: deadline
+          in: query
+          description: Return assignments with deadlines not later than this value
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: List of assignments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assignments'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    post:
+      tags: [ Assignments ]
+      summary: Create assignment
+      description: Available to the assigned professor
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentCreate'
+      responses:
+        '201':
+          description: Assignment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assignment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/assignments/{id}:
+    parameters:
+      - $ref: '#/components/parameters/AssignmentId'
+
+    get:
+      tags: [ Assignments ]
+      summary: Get assignment by ID
+      responses:
+        '200':
+          description: Assignment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assignment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    patch:
+      tags: [ Assignments ]
+      summary: Update assignment
+      description: Available to the assigned professor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignmentPatch'
+      responses:
+        '200':
+          description: Assignment updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Assignment'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    delete:
+      tags: [ Assignments ]
+      summary: Delete assignment
+      description: Available to the assigned professor
+      responses:
+        '204':
+          description: Assignment deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/assignments/{id}/submissions:
+    parameters:
+      - $ref: '#/components/parameters/AssignmentId'
+
+    get:
+      tags: [ Submissions ]
+      summary: Get assignment submissions
+      description: Students see only their own submissions; assigned professors see submissions for their courses
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/Sort'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/SubmissionStatus'
+      responses:
+        '200':
+          description: List of submissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submissions'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    post:
+      tags: [ Submissions ]
+      summary: Submit assignment solution
+      description: Available to enrolled students, maximum three attempts per assignment
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmissionCreate'
+      responses:
+        '201':
+          description: Submission created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submission'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Submission limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: SUBMISSION_LIMIT_EXCEEDED
+                  message: Превышено допустимое количество попыток сдачи задания
+                  status: 409
+                  path: /api/v1/assignments/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/submissions
+                  request_id: 22222222-2222-4222-8222-222222222222
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/submissions/{id}:
+    parameters:
+      - $ref: '#/components/parameters/SubmissionId'
+
+    get:
+      tags: [ Submissions ]
+      summary: Get submission by ID
+      description: Available to the submission owner and the assigned professor
+      responses:
+        '200':
+          description: Submission details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submission'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /api/v1/submissions/{id}/review:
+    parameters:
+      - $ref: '#/components/parameters/SubmissionId'
+
+    get:
+      tags: [ Reviews ]
+      summary: Get submission review
+      description: Available to the submission owner and the assigned professor
+      responses:
+        '200':
+          description: Review details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    post:
+      tags: [ Reviews ]
+      summary: Create final review
+      description: Available to the assigned professor after automatic checking is completed
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreate'
+      responses:
+        '201':
+          description: Review created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+    patch:
+      tags: [ Reviews ]
+      summary: Update review
+      description: Available to the assigned professor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewPatch'
+      responses:
+        '200':
+          description: Review updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+components:
+  schemas:
+    CourseStatus:
+      type: string
+      enum:
+        - DRAFT
+        - PUBLISHED
+        - COMPLETED
+        - ARCHIVED
+      description: Course status
+    Course:
+      type: object
+      required:
+        - id
+        - title
+        - description
+        - professor_id
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 16
+          maxLength: 256
+        description:
+          type: string
+          minLength: 64
+          maxLength: 2048
+        professor_id:
+          type: integer
+          minimum: 1
+        status:
+          $ref: '#/components/schemas/CourseStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    CourseCreate:
+      type: object
+      required:
+        - title
+        - description
+        - professor_id
+      properties:
+        title:
+          type: string
+          minLength: 16
+          maxLength: 256
+        description:
+          type: string
+          minLength: 64
+          maxLength: 2048
+        professor_id:
+          type: integer
+          minimum: 1
+        status:
+          $ref: '#/components/schemas/CourseStatus'
+      additionalProperties: false
+    CourseUpdate:
+      type: object
+      required:
+        - title
+        - description
+        - professor_id
+        - status
+      properties:
+        title:
+          type: string
+          minLength: 16
+          maxLength: 256
+        description:
+          type: string
+          minLength: 64
+          maxLength: 2048
+        professor_id:
+          type: integer
+          minimum: 1
+        status:
+          $ref: '#/components/schemas/CourseStatus'
+      additionalProperties: false
+    CoursePatch:
+      type: object
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 16
+          maxLength: 256
+        description:
+          type: string
+          minLength: 64
+          maxLength: 2048
+        status:
+          $ref: '#/components/schemas/CourseStatus'
+      additionalProperties: false
+    CourseStudents:
+      type: object
+      required:
+        - course_id
+        - students_ids
+      properties:
+        course_id:
+          type: string
+          format: uuid
+        students_ids:
+          type: array
+          uniqueItems: true
+          items:
+            type: integer
+            minimum: 1
+      additionalProperties: false
+    Pagination:
+      type: object
+      required:
+        - offset
+        - limit
+        - total
+      properties:
+        offset:
+          type: integer
+          minimum: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+    Courses:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Course'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      additionalProperties: false
+    Error:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+            - status
+            - path
+            - request_id
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            status:
+              type: integer
+            path:
+              type: string
+            request_id:
+              type: string
+              format: uuid
+          additionalProperties: false
+      additionalProperties: false
+    UserRole:
+      type: string
+      enum:
+        - admin
+        - professor
+        - student
+      description: User role
+    User:
+      type: object
+      required:
+        - id
+        - full_name
+        - email
+        - role
+        - created_at
+      properties:
+        id:
+          type: integer
+          minimum: 1
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 256
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/UserRole'
+        created_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    UserCreate:
+      type: object
+      required:
+        - full_name
+        - email
+        - role
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 256
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/UserRole'
+      additionalProperties: false
+    UserUpdate:
+      type: object
+      minProperties: 1
+      properties:
+        full_name:
+          type: string
+          minLength: 1
+          maxLength: 256
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/UserRole'
+      additionalProperties: false
+    Users:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      additionalProperties: false
+    Assignment:
+      type: object
+      required:
+        - id
+        - course_id
+        - title
+        - description
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        course_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 256
+        description:
+          type: string
+          minLength: 1
+          maxLength: 4096
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    AssignmentCreate:
+      type: object
+      required:
+        - title
+        - description
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 256
+        description:
+          type: string
+          minLength: 1
+          maxLength: 4096
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+      additionalProperties: false
+    AssignmentPatch:
+      type: object
+      minProperties: 1
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 256
+        description:
+          type: string
+          minLength: 1
+          maxLength: 4096
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+      additionalProperties: false
+    SubmissionStatus:
+      type: string
+      enum:
+        - SUBMITTED
+        - PENDING
+        - PROCESSING
+        - COMPLETED
+        - FAILED
+      description: Submission status
+    Submission:
+      type: object
+      required:
+        - id
+        - assignment_id
+        - student_id
+        - attempt_number
+        - content
+        - status
+        - submitted_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        assignment_id:
+          type: string
+          format: uuid
+        student_id:
+          type: integer
+          minimum: 1
+        attempt_number:
+          type: integer
+          minimum: 1
+          maximum: 3
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+        status:
+          $ref: '#/components/schemas/SubmissionStatus'
+        submitted_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    SubmissionCreate:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 10000
+      additionalProperties: false
+    Review:
+      type: object
+      required:
+        - id
+        - submission_id
+      properties:
+        id:
+          type: string
+          format: uuid
+        submission_id:
+          type: string
+          format: uuid
+        auto_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+          nullable: true
+        final_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+          nullable: true
+        comment:
+          type: string
+          maxLength: 2048
+          nullable: true
+        professor_id:
+          type: integer
+          nullable: true
+          minimum: 1
+        reviewed_at:
+          type: string
+          format: date-time
+          nullable: true
+      additionalProperties: false
+    ReviewCreate:
+      type: object
+      required:
+        - final_score
+      properties:
+        final_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        comment:
+          type: string
+          maxLength: 2048
+          nullable: true
+      additionalProperties: false
+    ReviewPatch:
+      type: object
+      minProperties: 1
+      properties:
+        final_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        comment:
+          type: string
+          maxLength: 2048
+          nullable: true
+      additionalProperties: false
+    Assignments:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Assignment'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      additionalProperties: false
+    Submissions:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Submission'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      additionalProperties: false
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      description: Maximum number of items per page
+      schema:
+        type: integer
+        maximum: 100
+        minimum: 1
+        default: 10
+    Offset:
+      name: offset
+      in: query
+      description: Смещение от начала списка
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Sort:
+      name: sort
+      in: query
+      required: false
+      description: "Sorting in field:direction format"
+      schema:
+        type: string
+        pattern: '^[a-z_]+:(asc|desc)$'
+        example: created_at:desc
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Unique key for preventing duplicate POST operations
+      schema:
+        type: string
+        format: uuid
+
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+    CourseId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    CoursePathId:
+      name: course_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    StudentId:
+      name: student_id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+
+    AssignmentId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    SubmissionId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Unauthorized:
+      description: Authentication required or token invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Conflict:
+      description: Operation conflicts with current resource state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT authentication
